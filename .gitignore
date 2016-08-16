@@ -1,0 +1,14 @@
+project/
+/project/
+/bin/
+/target/
+bin/
+target/
+.settings/
+.loadpath
+.project
+.classpath
+.cache-main
+.cache-tests
+.idea
+.DS_Store

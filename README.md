@@ -11,11 +11,6 @@ val cefDataFrame = sqlContext.read.format("nl.anchormen.spark.cef.CefSource")
     .load("path/to/yourdata.cef")
 ```
 
- The current implementation supports two options:
-
-1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver
-2. partitions: the number of partitions the result should have. This number is passed to the sc.textFile(…) operation used to read the CEF file(s)
-
 This will result in a DataFrame with the following schema:
 
 ```terminal
@@ -33,6 +28,11 @@ root
 ```
 
 The schema is always inferred, hence it is not possible to set a schema using the DataSources schema(…) function.
+
+ The current implementation supports two options:
+
+1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver
+2. partitions: the number of partitions the result should have. This number is passed to the sc.textFile(…) operation used to read the CEF file(s)
 
 Characters that are escaped (like \n, \\| and \\=) are converted into the right character or linefeed. 
 

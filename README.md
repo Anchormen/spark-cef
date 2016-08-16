@@ -34,7 +34,7 @@ root
 
 The schema is always inferred, hence it is not possible to set a schema using the DataSources schema(…) function.
 
-Characters that are escaped (like \n, \\| and \\=) are converted into the richt character or linefeed. 
+Characters that are escaped (like \n, \\| and \\=) are converted into the right character or linefeed. 
 
 #### Timestamps
 

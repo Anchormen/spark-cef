@@ -18,7 +18,7 @@ class CefSource extends RelationProvider with SchemaRelationProvider {
         else 
           sqlContext.sparkContext.textFile(path)
           
-    CefRelation(lines, schema, scanLines)(sqlContext)
+    CefRelation(lines.filter(_.contains("CEF")), schema, scanLines, params)(sqlContext)
   }
 
   def createRelation(sqlContext: SQLContext, params: Map[String, String]): BaseRelation = {

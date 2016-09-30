@@ -10,15 +10,18 @@ import java.text.SimpleDateFormat
 
 object InferSchema {
   
+  val syslogDate = "Syslog_Date"
+  val syslogHost = "Syslog_Host"
+  
   // CEF Standard header fields. Extension fields will be added to this base set by apply(...)
   val fields = ArrayBuffer(
-    StructField("Version", IntegerType, nullable = false),
-    StructField("Device Vendor", StringType, nullable = false),
-    StructField("Device Product", StringType, nullable = false),
-    StructField("Device Version", StringType, nullable = false),
-    StructField("Device Event Class ID", StringType, nullable = false),
-    StructField("Name", StringType, nullable = false),
-    StructField("Severity", StringType, nullable = false))
+    StructField("CEF_Version", IntegerType, nullable = true),
+    StructField("CEF_DeviceVendor", StringType, nullable = true),
+    StructField("CEF_DeviceProduct", StringType, nullable = true),
+    StructField("CEF_DeviceVersion", StringType, nullable = true),
+    StructField("CEF_DeviceEventClassID", StringType, nullable = true),
+    StructField("CEF_Name", StringType, nullable = true),
+    StructField("CEF_Severity", StringType, nullable = true))
   
   // All types of non-string extensions within CEF   
   val extensions = Map(
@@ -62,8 +65,7 @@ object InferSchema {
     "oldFileModificationTime"-> StructField("oldFileModificationTime", TimestampType, nullable = true),
     "rt"-> StructField("rt", TimestampType, nullable = true),
     "start"-> StructField("start", TimestampType, nullable = true),
-    "art"-> StructField("art", TimestampType, nullable = true),
-    "atz"-> StructField("atz", TimestampType, nullable = true)
+    "art"-> StructField("art", TimestampType, nullable = true)
     )
 
   /** 
@@ -78,9 +80,10 @@ object InferSchema {
       infer(lines.take(scanLines).toIterator)
     }else{
       // perform inference per partition and merge the result
-     val iter = lines.mapPartitions(iter => Array(infer(iter)).toIterator, false)
-     val partialResults = iter.toArray()
-
+     val iter = lines.mapPartitions(part => Array(infer(part)).toIterator, false)
+     
+     // let the driver combine the partial results
+     val partialResults = iter.collect()
      var schema = partialResults(0)._1
      val extIndex = partialResults(0)._2
      val datetimePatterns = partialResults(0)._3
@@ -112,6 +115,12 @@ object InferSchema {
    collection.foreach(line => {
       val mOpt = CefRelation.lineParser.findFirstMatchIn(line)
       if(mOpt.isDefined && mOpt.get.groupCount >= 8){ // interpret the extension if it exists
+        if(!mOpt.get.group(1).trim.startsWith("CEF") && !extIndex.contains(syslogDate)){ // assume syslog information if the line does not start with 'CEF'
+          extIndex += syslogDate -> myFields.length
+          myFields += StructField(syslogDate, TimestampType, nullable = true)
+          extIndex += syslogHost -> myFields.length
+          myFields += StructField(syslogHost, StringType, nullable = true)
+        }
         CefRelation.extensionPattern.findAllIn(mOpt.get.group(8)).matchData.foreach(m => {
             val key = m.group(1)
             if(!extIndex.contains(key)){

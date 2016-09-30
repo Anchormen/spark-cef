@@ -8,31 +8,42 @@ The DataSource can be used in the following way which will infer the schema base
 
 ```sbt
 val cefDataFrame = sqlContext.read.format("nl.anchormen.spark.cef.CefSource")
-    .load("path/to/yourdata.cef")
+    .load("path/to/your_cef_data.log")
 ```
 
 This will result in a DataFrame with the following schema:
 
 ```terminal
 root
- |-- Version: integer (nullable = false)
- |-- Device Vendor: string (nullable = false)
- |-- Device Product: string (nullable = false)
- |-- Device Version: string (nullable = false)
- |-- Device Event Class ID: string (nullable = false)
- |-- Name: string (nullable = false)
- |-- Severity: string (nullable = false)
+ |-- CEF_Version: integer (nullable = true)
+ |-- CEF_Device Vendor: string (nullable = true)
+ |-- CEF_Device Product: string (nullable = true)
+ |-- CEF_Device Version: string (nullable = true)
+ |-- CEF_Device Event Class ID: string (nullable = true)
+ |-- CEF_Name: string (nullable = true)
+ |-- CEF_Severity: string (nullable = true)
  |-- extension_field_1: <field1 type> (nullable = true)
  |-- extension_field_2: <field2 type> (nullable = true)
  |-- other extension fields...
 ```
 
+If the records contain syslog headers timestamp and hostname/IP-address it will ad it to the dataframe as well:
+
+```terminal
+root
+ |-- Syslog_Date: timestamp (nullable = true)
+ |-- Syslog_Host: string (nullable = true)
+```
+
+***The current implementation requires each CEF record to be on a single line and allows all fields to be empty/null.***
+
 The schema is always inferred, hence it is not possible to set a schema using the DataSources schema(…) function.
 
- The current implementation supports two options:
+ The current implementation supports a number of options:
 
-1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver
+1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver!
 2. partitions: the number of partitions the result should have. This number is passed to the sc.textFile(…) operation used to read the CEF file(s)
+3. year.offset: an integer number like '2016' which if specified is used to create absolute Timestamps for fields that do not contain a year
 
 Characters that are escaped (like \n, \\| and \\=) are converted into the right character or linefeed. 
 

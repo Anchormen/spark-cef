@@ -35,6 +35,8 @@ case class CefRelation(lines: RDD[String],
     params: scala.collection.immutable.Map[String, String])
   (@transient val sqlContext: SQLContext) extends BaseRelation with TableScan {
   
+  
+  val endOfRecord = params.getOrElse("end.of.record", "")
   val yearOffset = new SimpleDateFormat("yyyy").parse(params.getOrElse("year.offset", "1970")).getTime
   
   var extIndex : Map[String, Int] = null // holds an index from key name to row index
@@ -65,7 +67,9 @@ case class CefRelation(lines: RDD[String],
   /**
    * Converts a single line into a Row object as defined by the inferred schema
    */
-  def parseLine(line : String) : Row = {
+  def parseLine(lineToParse : String) : Row = {
+     val line = if(endOfRecord.length > 0 && lineToParse.endsWith(endOfRecord))
+         lineToParse.substring(0, lineToParse.length() - endOfRecord.length()) else  lineToParse
      val mOpt = CefRelation.lineParser.findFirstMatchIn(line) // using regex might be slow, TODO: faster?
       val values = Array.fill[Any](schema.length)(None) // initial set of values containing 'None'
       if(mOpt.isDefined){

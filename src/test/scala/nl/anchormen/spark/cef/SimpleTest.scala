@@ -14,16 +14,25 @@ object SimpleTest extends App {
   val sqlContext = new SQLContext(sc)
   
   val data = sqlContext.read.format("nl.anchormen.spark.cef.CefSource")
-    //.option("scanLines", "1")
+    .option("scanLines", "9")
     .option("partitions", "2")
-    .option("year.offset", "2016")
-    //.option("end.of.record", "#015")
+    .option("end.of.record", "#015")
+//    .option("epoch.millis.fields", "mrt")
     .load("src/test/resources/corne.log")
-  data.select("eventAnnotationEndTime").rdd.take(10).foreach(println)
+  //data.select("eventAnnotationEndTime").rdd.take(10).foreach(println)
   data.printSchema()
-  
+    data.show()
+    data.coalesce(1).write.parquet("src/test/output.parquet")
   
   /*
+  // convert DF to json and write it to MaprDB (Json documents)  
+  data.toJSON.foreachPartition( part => {
+    val table = MapRDB.getTable("tablename")
+     part.foreach(table.insertOrReplace(MapRDB.newDocument(_))
+  })
+  */
+  /*
+  // write data to MapR-DB (binary)
   val fields = data.schema.fields.map(struct => (Bytes.toBytes(struct.name), struct.dataType))
   
   data.rdd.foreachPartition( partition => {

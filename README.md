@@ -27,23 +27,15 @@ root
  |-- other extension fields...
 ```
 
-If the records contain syslog headers timestamp and hostname/IP-address it will ad it to the dataframe as well:
-
-```terminal
-root
- |-- Syslog_Date: timestamp (nullable = true)
- |-- Syslog_Host: string (nullable = true)
-```
+Anything before 'CEF', like syslog metadata, will be dropped. The schema is always inferred, hence it is not possible to set a schema using the DataSources schema(…) function.
 
 ***The current implementation requires each CEF record to be on a single line and allows all fields to be empty/null.***
-
-The schema is always inferred, hence it is not possible to set a schema using the DataSources schema(…) function.
 
  The current implementation supports a number of options:
 
 1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver!
 2. partitions: the number of partitions the result should have. This number is passed to the sc.textFile(…) operation used to read the CEF file(s)
-3. year.offset: an integer number like '2016' which if specified is used to create absolute Timestamps for fields that do not contain a year
+3. epoch.millis.fields: a comma separated list of fields that contain a unix timestamp in milliseconds and should be cast to a Timestamp. Example: *"epoch.millis.fields"->"field1, field2, field3"* 
 
 Characters that are escaped (like \n, \\| and \\=) are converted into the right character or linefeed. 
 

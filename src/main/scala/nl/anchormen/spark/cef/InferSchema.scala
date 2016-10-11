@@ -10,8 +10,8 @@ import java.text.SimpleDateFormat
 
 object InferSchema {
   
-  val syslogDate = "Syslog_Date"
-  val syslogHost = "Syslog_Host"
+  //val syslogDate = "Syslog_Date"
+  //val syslogHost = "Syslog_Host"
   
   // CEF Standard header fields. Extension fields will be added to this base set by apply(...)
   val fields = ArrayBuffer(
@@ -74,13 +74,18 @@ object InferSchema {
    *   - a map from fieldname to column index
    *   _ a map from fieldname to SimpleDateTime pattern (only for Timestamp fields)  
    */
-  def apply(lines: RDD[String], scanLines : Integer) : Tuple3[StructType, HashMap[String, Int], HashMap[String, Option[SimpleDateFormat]]] = {
+  def apply(lines: RDD[String], params: scala.collection.immutable.Map[String, String]) 
+      : Tuple3[StructType, HashMap[String, Int], HashMap[String, Option[SimpleDateFormat]]] = {
+    val scanLines = params.getOrElse("scanlines", "-1").toInt
+    val epochMillisFields = if(params.contains("epoch.millis.fields"))
+        params.get("epoch.millis.fields").get.split(",").map(_.trim)
+      else Array[String]()
     if(scanLines > 0){ 
       // perform schema inference in the driver by taking scanLines number of lines
-      infer(lines.take(scanLines).toIterator)
+      infer(lines.take(scanLines).toIterator, epochMillisFields)
     }else{
       // perform inference per partition and merge the result
-     val iter = lines.mapPartitions(part => Array(infer(part)).toIterator, false)
+     val iter = lines.mapPartitions(part => Array(infer(part, epochMillisFields)).toIterator, false)
      
      // let the driver combine the partial results
      val partialResults = iter.collect()
@@ -107,20 +112,26 @@ object InferSchema {
   /**
    * Infers the schema on part of the data
    */
-  def infer(collection : Iterator[String]) = {
+  def infer(collection : Iterator[String], epochFields : Array[String]) = {
     val myFields = fields.clone() // holds all fields found 
     val extIndex = new HashMap[String, Int]() // holds the global mapping from key to row index
     val datetimePatterns = new HashMap[String, Option[SimpleDateFormat]]() // TODO: maybe add a list of dateformats to support multiple variations
     
+    epochFields.foreach( name => {
+      extIndex += name -> myFields.length
+      myFields += StructField(name, TimestampType, nullable = true)
+    } )
    collection.foreach(line => {
       val mOpt = CefRelation.lineParser.findFirstMatchIn(line)
       if(mOpt.isDefined && mOpt.get.groupCount >= 8){ // interpret the extension if it exists
+        /*
         if(!mOpt.get.group(1).trim.startsWith("CEF") && !extIndex.contains(syslogDate)){ // assume syslog information if the line does not start with 'CEF'
           extIndex += syslogDate -> myFields.length
           myFields += StructField(syslogDate, TimestampType, nullable = true)
           extIndex += syslogHost -> myFields.length
           myFields += StructField(syslogHost, StringType, nullable = true)
         }
+        */
         CefRelation.extensionPattern.findAllIn(mOpt.get.group(8)).matchData.foreach(m => {
             val key = m.group(1)
             if(!extIndex.contains(key)){

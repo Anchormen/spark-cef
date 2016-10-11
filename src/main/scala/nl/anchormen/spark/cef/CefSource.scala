@@ -12,13 +12,12 @@ class CefSource extends RelationProvider with SchemaRelationProvider {
     if(!params.contains("path")) throw new Exception("'path' must be specified for CEF data.")
     if(schema != null) throw new IllegalArgumentException("Setting a schema is not supported")
     val path = params("path")
-    val scanLines = params.getOrElse("scanlines", "-1").toInt
     val lines = if(params.contains("partitions") )
           sqlContext.sparkContext.textFile(path, params("partitions").toInt)
         else 
           sqlContext.sparkContext.textFile(path)
           
-    CefRelation(lines.filter(_.contains("CEF")), schema, scanLines, params)(sqlContext)
+    CefRelation(lines.filter(_.contains("CEF")), schema, params)(sqlContext)
   }
 
   def createRelation(sqlContext: SQLContext, params: Map[String, String]): BaseRelation = {

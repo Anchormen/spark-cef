@@ -56,7 +56,7 @@ object InferSchema {
     
     // Timestamps 
     "deviceCustomDate1"-> StructField("deviceCustomDate1", TimestampType, nullable = true),
-    "deviceCustomDate2"-> StructField("deviceCustomDate2 d", TimestampType, nullable = true),
+    "deviceCustomDate2"-> StructField("deviceCustomDate2", TimestampType, nullable = true),
     "end"-> StructField("end", TimestampType, nullable = true),
     "fileCreateTime"-> StructField("fileCreateTime", TimestampType, nullable = true),
     "fileModificationTime"-> StructField("fileModificationTime", TimestampType, nullable = true),

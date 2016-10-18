@@ -1,5 +1,5 @@
 name := "spark-cef"
-version := "0.6.23" // <major>.<minor>.<CEF-version>
+version := "0.7.23" // <major>.<minor>.<CEF-version>
 organization := "nl.anchormen"
 scalaVersion := "2.10.6"
 val sparkVersion = "1.6.1"

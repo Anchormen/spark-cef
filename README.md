@@ -33,9 +33,10 @@ Anything before 'CEF', like syslog metadata, will be dropped. The schema is alwa
 
  The current implementation supports a number of options:
 
-1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver!
-2. partitions: the number of partitions the result should have. This number is passed to the sc.textFile(…) operation used to read the CEF file(s)
-3. epoch.millis.fields: a comma separated list of fields that contain a unix timestamp in milliseconds and should be cast to a Timestamp. Example: *"epoch.millis.fields"->"field1, field2, field3"* 
+1. scanLines: the number of lines to use to infer the schema. This can be used to avoid a full pass over the data. Note: the specified number of lines is taken into the driver! (default = -1 which means to scan all data)
+2. partitions: the number of partitions the result should have. This number is passed to the sc.textFile(…) operation used to read the CEF file(s). (default is determined by spark)
+3. epoch.millis.fields: a comma separated list of fields that contain a unix timestamp in milliseconds and should be cast to a Timestamp. Example: *"epoch.millis.fields"->"field1, field2, field3"*
+4. string.trim: specifies that all string values should be trimmed (default = false)
 
 Characters that are escaped (like \n, \\| and \\=) are converted into the right character or linefeed. 
 

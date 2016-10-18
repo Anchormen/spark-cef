@@ -4,4 +4,4 @@ CEF:1|Security|threatmanager|1.0|100|worm \| successfully stopped|10|src=10.0.0.
 CEF:1|Security|threatmanager|1.0|100|worm successfully stopped|10|src=10.0.0.1 dst=2.1.2.2\=
 
 CEF:10|Security|threatmanager|1.0|100|worm successfully stopped|10|deviceCustomDate1=FEB 28 22:45:03.987
-CEF:10|Security|threatmanager|1.0|100|worm \\successfully stopped|10|src=10.0.0.1 dst=2.1.2.2
+CEF:10|Security|threatmanager|1.0|100|worm \\successfully stopped|10|src=10.0.0.1       \n dst=2.1.2.2

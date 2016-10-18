@@ -11,9 +11,9 @@ import java.sql.Timestamp
 
 object CefRelation{
   // regular expressions used to parse a CEF record and extension field
-  //val lineParser = "(.+[^\\\\])\\|(.+[^\\\\])\\|(.+[^\\\\])\\|(.*[^\\\\])\\|(.+[^\\\\])\\|(.+[^\\\\])\\|(.+[^\\\\])\\|(.*)".r
   val lineParser = "(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*)".r
-  val extensionPattern = "(\\w+)=(.+?)(?=$|\\s\\w+=)".r 
+  val extensionPattern = "([\\w|\\.|_|-]+)=(.+?)(?=$|\\s[\\w|\\.|_|-]+=)".r 
+
   //val syslogDate = new SimpleDateFormat("yyyy MMM dd HH:mm:ss")
   
   // set with datetime patterns used within CEF
@@ -37,6 +37,7 @@ case class CefRelation(lines: RDD[String],
   
   val endOfRecord = params.getOrElse("end.of.record", "")
   val yearOffset = params.getOrElse("year.offset", "1970")
+  val trimStrings = params.getOrElse("string.trim", "false").toBoolean
   
   var extIndex : Map[String, Int] = null // holds an index from key name to row index
   var sdfPatterns : Map[String, Option[SimpleDateFormat]] = null // holds the pattern to use to parse timestamps (None == long)
@@ -105,9 +106,12 @@ case class CefRelation(lines: RDD[String],
                   if(pattern.isDefined) new Timestamp(pattern.get.parse(value).getTime)
                   else new Timestamp(value.toLong)
                 }
-                case _ => value.replaceAll("\\\\=", "=") // if nothing else we assume the value is a string
+                case _ => {
+                  val cleaned = value.replaceAll("\\\\=", "=") // if nothing else we assume the value is a string
                   .replaceAll("\\\\n", sys.props("line.separator") )
                   .replaceAll("\\\\\\\\", "\\\\")
+                  if(trimStrings) cleaned.trim() else cleaned
+                }
               }
             }) 
           } else values(i-1) = matc.group(i).replaceAll("\\\\\\|", "|")

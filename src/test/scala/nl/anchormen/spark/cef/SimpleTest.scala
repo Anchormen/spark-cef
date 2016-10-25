@@ -12,19 +12,22 @@ object SimpleTest extends App {
   val conf = new SparkConf().setAppName("CEF Test").setMaster("local[*]")
   val sc = new SparkContext(conf)
   val sqlContext = new SQLContext(sc)
-  
+
   val data = sqlContext.read.format("nl.anchormen.spark.cef.CefSource")
-    //.option("scanLines", "9")
     .option("partitions", "2")
+    .option("schema.lines", "5")
     .option("end.of.record", "#015")
-    .option("string.trim", "false")
-//  .option("epoch.millis.fields", "mrt")
+    .option("string.trim", "true")
+    .option("ignore.exception", "true")
+    .option("exception.log", "true")
+    .option("epoch.millis.fields", "mrt")
     .load("src/test/resources/simple.cef")
-  //data.select("eventAnnotationEndTime").rdd.take(10).foreach(println)
   data.printSchema()
-    data.show()
-  //  data.coalesce(1).write.parquet("src/test/output.parquet")
+  data.show()
   
+  //  data.coalesce(1).write.parquet("src/test/output.parquet")
+  //val data = sc.textFile("src/test/resources/corne.log").filter(_.contains("CEF")).map(CefRelation.parseLine(_, "#015", Set("mrt", "art"), Set("slong", "slat", "dlong", "dlat")))
+  //data.filter(_.isSuccess).map(m => scala.util.parsing.json.JSONObject(m.get.toMap)).collect.foreach(println)
   /*
   // convert DF to json and write it to MaprDB (Json documents)  
   data.toJSON.foreachPartition( part => {

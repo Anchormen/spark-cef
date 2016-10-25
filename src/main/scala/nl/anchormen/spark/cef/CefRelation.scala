@@ -8,6 +8,8 @@ import org.apache.spark.sql.types._
 import scala.collection.mutable.Map
 import java.text.SimpleDateFormat
 import java.sql.Timestamp
+import scala.util.Try
+import org.slf4j.LoggerFactory
 
 object CefRelation{
   // regular expressions used to parse a CEF record and extension field
@@ -27,6 +29,51 @@ object CefRelation{
       new SimpleDateFormat("MMM dd yyyy HH:mm:ss zzz"),
       new SimpleDateFormat("MMM dd yyyy HH:mm:ss")
       )
+   
+   /**
+    * Un-escapes CEF string values according to the specification   
+    */
+   def cleanString(value : String) = value.replaceAll("\\\\\\|", "|").replaceAll("\\\\n", sys.props("line.separator") ).replaceAll("\\\\\\\\", "\\\\")
+      
+   /**
+    * Parses a single line without the use of a schema (used for streaming applications)
+    */
+   def parseLine(lineToParse : String, endOfRecord:String = "", longs : Set[String] = Set[String](), doubles : Set[String] = Set[String]()) = Try{
+     var line = lineToParse.substring(lineToParse.indexOf("CEF"))
+     line = if(endOfRecord.length > 0 && line.endsWith(endOfRecord))
+     line.substring(0, line.length() - endOfRecord.length()) else line
+     val row = Map[String, Any]()
+     val mOpt = CefRelation.lineParser.findFirstMatchIn(line) // using regex might be slow, TODO: faster?
+     if(mOpt.isDefined){
+        val matc = mOpt.get
+        for(i <- 1 to matc.groupCount){ // iterate all elements found in the line
+          i match {
+            case 1 => row += "CEF_Version" -> matc.group(i).trim.substring(4).trim.toInt
+            case 2 => row += "CEF_DeviceVendor" -> cleanString(matc.group(i))
+            case 3 => row += "CEF_DeviceProduct" -> cleanString(matc.group(i))
+            case 4 => row += "CEF_DeviceVersion" -> cleanString(matc.group(i))
+            case 5 => row += "CEF_DeviceEventClassID" -> cleanString(matc.group(i))
+            case 6 => row += "CEF_Name" -> cleanString(matc.group(i))
+            case 7 => row += "CEF_Severity" -> cleanString(matc.group(i))
+            case 8 => if(matc.group(i).trim.length() > 0){
+                CefRelation.extensionPattern.findAllIn(matc.group(i)).matchData.foreach(m => {
+                val key = m.group(1)
+                val value = m.group(2)
+                if(longs.contains(key)){
+                  row += key -> value.toLong
+                }else if(doubles.contains(key)){
+                	row += key -> value.toDouble
+                }else{
+                	row += key -> value
+                }
+              })
+            }
+          }
+        }
+      }
+      row
+  }
+      
 }
 
 case class CefRelation(lines: RDD[String], 
@@ -34,6 +81,7 @@ case class CefRelation(lines: RDD[String],
     params: scala.collection.immutable.Map[String, String])
   (@transient val sqlContext: SQLContext) extends BaseRelation with TableScan {
   
+  private val logger = LoggerFactory.getLogger(CefRelation.getClass)
   
   val endOfRecord = params.getOrElse("end.of.record", "")
   val yearOffset = params.getOrElse("year.offset", "1970")
@@ -61,9 +109,24 @@ case class CefRelation(lines: RDD[String],
    * Converts the CEF records to Row elements using the inferred schema.
    */
   override def buildScan(): RDD[Row] = {
-    lines.map(parseLine(_))
+    if(params.getOrElse("ignore.exception", "false").toBoolean){
+    	val parseResult = lines.map(tryParseLine(_))
+    	if(params.getOrElse("exception.log", "true").toBoolean) parseResult.filter(_.isFailure).foreach(exception => try{
+    	  logger.warn("Unable to parse line", exception.get)
+    	}catch{
+    	  case t : Throwable => logger.warn("Unable to parse line", t)
+    	})
+      parseResult.filter(_.isSuccess).map(_.get)
+    }else{
+    	lines.map(parseLine(_))
+    }
   }
 
+  /**
+   * Ads a Try arround to parseLine in order to make parsing more robust
+   */
+  def tryParseLine(lineToParse : String) : Try[Row] = Try(parseLine(lineToParse))
+  
   /**
    * Converts a single line into a Row object as defined by the inferred schema
    */
@@ -114,9 +177,7 @@ case class CefRelation(lines: RDD[String],
                 }
               }
             }) 
-          } else values(i-1) = matc.group(i).replaceAll("\\\\\\|", "|")
-            .replaceAll("\\\\n", sys.props("line.separator") )
-            .replaceAll("\\\\\\\\", "\\\\")
+          } else values(i-1) = CefRelation.cleanString(matc.group(i))
         }
       }
       Row.fromSeq(values) // all 'None' if mOpt was not defined (i.e. on parse error) TODO handle this situation

@@ -76,7 +76,7 @@ object InferSchema {
    */
   def apply(lines: RDD[String], params: scala.collection.immutable.Map[String, String]) 
       : Tuple3[StructType, HashMap[String, Int], HashMap[String, Option[SimpleDateFormat]]] = {
-    val scanLines = params.getOrElse("scanlines", "-1").toInt
+    val scanLines = params.getOrElse("schema.lines", "-1").toInt
     val epochMillisFields = if(params.contains("epoch.millis.fields"))
         params.get("epoch.millis.fields").get.split(",").map(_.trim)
       else Array[String]()

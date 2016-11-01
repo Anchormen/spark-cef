@@ -10,6 +10,10 @@ import java.text.SimpleDateFormat
 import java.sql.Timestamp
 import scala.util.Try
 import org.slf4j.LoggerFactory
+import scala.util.Success
+import scala.util.Failure
+import java.io.StringWriter
+import java.io.PrintWriter
 
 object CefRelation{
   // regular expressions used to parse a CEF record and extension field
@@ -101,6 +105,9 @@ case class CefRelation(lines: RDD[String],
       cefSchema = tuple._1
       extIndex = tuple._2
       sdfPatterns = tuple._3
+      if(params.getOrElse("exception.add.result", "false").toBoolean){
+        cefSchema = cefSchema.add( new StructField("parse_exception", StringType, nullable = true) )
+      }
     }
     cefSchema
   }
@@ -110,14 +117,24 @@ case class CefRelation(lines: RDD[String],
    */
   override def buildScan(): RDD[Row] = {
     if(params.getOrElse("ignore.exception", "false").toBoolean){
+      // parse lines and handle exceptions
     	val parseResult = lines.map(tryParseLine(_))
-    	if(params.getOrElse("exception.log", "true").toBoolean) parseResult.filter(_.isFailure).foreach(exception => try{
-    	  logger.warn("Unable to parse line", exception.get)
-    	}catch{
-    	  case t : Throwable => logger.warn("Unable to parse line", t)
+    	  
+    	parseResult.map( t => t match {
+    	  case Success(r) => r
+    	  case Failure(t) => {
+    	    if(params.getOrElse("exception.log", "true").toBoolean) logger.warn("Unable to parse line", t)
+    	    val values = Array.fill[Any](schema.length)(None)
+    	    if(params.getOrElse("exception.add.result", "false").toBoolean){
+      	    val sw = new StringWriter();
+            t.printStackTrace(new PrintWriter(sw));
+      	    values(values.length - 1) = sw.toString()
+    	    }
+    	    Row.fromSeq(values)
+    	  }
     	})
-      parseResult.filter(_.isSuccess).map(_.get)
     }else{
+      // parse lines and fail fast on an exception
     	lines.map(parseLine(_))
     }
   }

@@ -18,7 +18,7 @@ import java.io.PrintWriter
 object CefRelation{
   // regular expressions used to parse a CEF record and extension field
   val lineParser = "(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*(?<!\\\\))\\|(.*)".r
-  val extensionPattern = "([\\w|\\.|_|-]+)=(.+?)(?=$|\\s[\\w|\\.|_|-]+=)".r 
+  val extensionPattern = """(?m)([\w\._-]+)=(.+?)(?=$|\s[\w\._-]+=)""".r
 
   //val syslogDate = new SimpleDateFormat("yyyy MMM dd HH:mm:ss")
   
